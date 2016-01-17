@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 - 2015, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2011 - 2016, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -253,7 +253,7 @@ decode_string(lua_State *L, char **s)
 				break;
 			case 'u':
 				code2utf8(L, (unsigned char *)(*s) + 2, utfbuf);
-				size_t len = strlen(utfbuf);
+				len = strlen(utfbuf);
 				strcpy(newc, utfbuf);
 				newc += len;
 				(*s) += 6;
@@ -263,12 +263,12 @@ decode_string(lua_State *L, char **s)
 				break;
 			}
 		} else if (nextEscape != NULL) {
-			size_t len = nextEscape - *s;
+			len = nextEscape - *s;
 			strncpy(newc, *s, len);
 			newc += len;
 			(*s) += len;
 		} else {
-			size_t len = end - *s;
+			len = end - *s;
 			strncpy(newc, *s, len);
 			newc += len;
 			(*s) += len;
