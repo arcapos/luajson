@@ -307,7 +307,10 @@ decode_value(lua_State *L, char **s, int null)
 		}
 		*s += 4;
 	} else if (isdigit(**s) || **s == '+' || **s == '-') {
-		lua_pushnumber(L, atof(*s));
+		if (strchr(*s, '.'))
+			lua_pushnumber(L, atof(*s));
+		else
+			lua_pushinteger(L, atol(*s));
 		/* advance pointer past the number */
 		while (isdigit(**s) || **s == '+' || **s == '-'
 		    || **s == 'e' || **s == 'E' || **s == '.')
@@ -553,7 +556,7 @@ json_set_info(lua_State *L)
 	lua_pushliteral(L, "JSON encoder/decoder for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "json 1.2.3");
+	lua_pushliteral(L, "json 1.2.4");
 	lua_settable(L, -3);
 }
 
