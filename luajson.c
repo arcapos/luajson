@@ -307,14 +307,20 @@ decode_value(lua_State *L, char **s, int null)
 		}
 		*s += 4;
 	} else if (isdigit(**s) || **s == '+' || **s == '-') {
-		if (strchr(*s, '.'))
-			lua_pushnumber(L, atof(*s));
-		else
-			lua_pushinteger(L, atol(*s));
+		char *p = *s;
+		int isfloat = 0;
+
 		/* advance pointer past the number */
 		while (isdigit(**s) || **s == '+' || **s == '-'
-		    || **s == 'e' || **s == 'E' || **s == '.')
+		    || **s == 'e' || **s == 'E' || **s == '.') {
+		    	if (**s == 'e' || **s == 'E' || **s == '.')
+		    		isfloat = 1;
 			(*s)++;
+		}
+		if (isfloat)
+			lua_pushnumber(L, atof(p));
+		else
+			lua_pushinteger(L, atol(p));
 	} else {
 		switch (**s) {
 		case '[':
