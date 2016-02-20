@@ -200,6 +200,8 @@ decode_string(lua_State *L, char **s)
 		if (**s == '"' && (*((*s) - 1) != '\\'))
 			end = *s;
 	}
+	if (end == NULL)
+		return;
 	*s = beginning;
 	len = strlen(*s);
 	newstr = malloc(len + 1);
@@ -562,7 +564,7 @@ json_set_info(lua_State *L)
 	lua_pushliteral(L, "JSON encoder/decoder for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "json 1.2.5");
+	lua_pushliteral(L, "json 1.2.6");
 	lua_settable(L, -3);
 }
 
