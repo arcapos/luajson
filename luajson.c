@@ -43,7 +43,8 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-#define JSON_NULL_METATABLE "JSON null object methods"
+#define JSON_NULL_METATABLE 	"JSON null object methods"
+#define JSON_GCMEM_METATABLE	"JSON garbage collected memory"
 
 static void decode_value(lua_State *, char **, int);
 static void decode_string(lua_State *, char **);
@@ -51,21 +52,53 @@ static void encode(lua_State *, luaL_Buffer *);
 
 static jmp_buf env;
 
+/*
+ * Garbage collected memory
+ */
+static void **
+gcmalloc(lua_State *L, size_t size)
+{
+	void **p;
+	p = lua_newuserdata(L, size);
+	*p = NULL;
+	luaL_setmetatable(L, JSON_GCMEM_METATABLE);
+	return p;
+}
+
+/* Memory can be free'ed immediately or left to the garbage collector */
+static void
+gcfree(void **p)
+{
+	free(*p);
+	*p = NULL;
+}
+
+static int
+gcmem_clear(lua_State *L)
+{
+	void **p = luaL_checkudata(L, 1, JSON_GCMEM_METATABLE);
+
+	free(*p);
+	*p = NULL;
+	return 0;
+}
+
 static int
 json_error(lua_State *L, const char *fmt, ...)
 {
 	va_list ap;
 	int len;
-	char *msg;
+	void **msg;
 
+	msg = gcmalloc(L, sizeof(char *));
 	va_start(ap, fmt);
-	len = vasprintf(&msg, fmt, ap);
+	len = vasprintf((char **)msg, fmt, ap);
 	va_end(ap);
 
 	lua_pushnil(L);
 	if (len != -1) {
-		lua_pushstring(L, msg);
-		free(msg);
+		lua_pushstring(L, *msg);
+		gcfree(msg);
 	} else
 		lua_pushstring(L, "internal error: vasprintf failed");
 	longjmp(env, 0);
@@ -204,7 +237,7 @@ decode_string(lua_State *L, char **s)
 		return;
 	*s = beginning;
 	len = strlen(*s);
-	newstr = malloc(len + 1);
+	newstr = lua_newuserdata(L, len + 1);
 	memset(newstr, 0, len + 1);
 	newc = newstr;
 	while (*s != end) {
@@ -278,8 +311,8 @@ decode_string(lua_State *L, char **s)
 	}
 	*newc = 0;
 	lua_pushstring(L, newstr);
+	lua_remove(L, -2);	/* the userdata value */
 	(*s)++;
-	free(newstr);
 }
 
 static void
@@ -564,7 +597,7 @@ json_set_info(lua_State *L)
 	lua_pushliteral(L, "JSON encoder/decoder for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "json 1.2.6");
+	lua_pushliteral(L, "json 1.2.7");
 	lua_settable(L, -3);
 }
 
@@ -611,6 +644,14 @@ luaopen_json(lua_State* L)
 
 	}
 	lua_setmetatable(L, -2);
+
+	if (luaL_newmetatable(L, JSON_GCMEM_METATABLE)) {
+		lua_pushliteral(L, "__gc");
+		lua_pushcfunction(L, gcmem_clear);
+		lua_settable(L, -3);
+	}
+	lua_pop(L, 1);
+
 	lua_setfield(L, -2, "null");
 	return 1;
 }
