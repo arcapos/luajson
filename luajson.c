@@ -55,7 +55,7 @@ static jmp_buf env;
 /*
  * Garbage collected memory
  */
-static void **
+static void *
 gcmalloc(lua_State *L, size_t size)
 {
 	void **p;
@@ -67,10 +67,11 @@ gcmalloc(lua_State *L, size_t size)
 
 /* Memory can be free'ed immediately or left to the garbage collector */
 static void
-gcfree(void **p)
+gcfree(void *p)
 {
-	free(*p);
-	*p = NULL;
+	void **mem = (void **)p;
+	free(*mem);
+	*mem = NULL;
 }
 
 static int
@@ -88,7 +89,7 @@ json_error(lua_State *L, const char *fmt, ...)
 {
 	va_list ap;
 	int len;
-	void **msg;
+	char **msg;
 
 	msg = gcmalloc(L, sizeof(char *));
 	va_start(ap, fmt);
