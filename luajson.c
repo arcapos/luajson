@@ -238,7 +238,8 @@ decode_string(lua_State *L, char **s)
 		return;
 	*s = beginning;
 	len = strlen(*s);
-	newstr = lua_newuserdata(L, len + 1);
+	if ((newstr = malloc(len + 1)) == NULL)
+		json_error(L, "memory error");
 	memset(newstr, 0, len + 1);
 	newc = newstr;
 	while (*s != end) {
@@ -312,8 +313,8 @@ decode_string(lua_State *L, char **s)
 	}
 	*newc = 0;
 	lua_pushstring(L, newstr);
-	lua_remove(L, -2);	/* the userdata value */
 	(*s)++;
+	free(newstr);
 }
 
 static void
