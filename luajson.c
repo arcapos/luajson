@@ -335,8 +335,7 @@ decode_value(lua_State *L, char **s, int null)
 			break;
 		case 1:
 			lua_newtable(L);
-			luaL_getmetatable(L, JSON_NULL_METATABLE);
-			lua_setmetatable(L, -2);
+			luaL_setmetatable(L, JSON_NULL_METATABLE);
 			break;
 		case 2:
 			lua_pushnil(L);
@@ -474,16 +473,18 @@ encode(lua_State *L, luaL_Buffer *b)
 	switch (lua_type(L, -1)) {
 	case LUA_TBOOLEAN:
 		luaL_addstring(b, lua_toboolean(L, -1) ? "true" : "false");
+		lua_pop(L, 1);
 		break;
 	case LUA_TNUMBER:
 		luaL_addvalue(b);
 		break;
 	case LUA_TSTRING:
 		encode_string(L, b, (unsigned char *)lua_tostring(L, -1));
+		lua_pop(L, 1);
 		break;
 	case LUA_TTABLE:
 		/* check if this is the null value */
-		lua_checkstack(L, 2);
+		luaL_checkstack(L, 2, "out of stack space");
 		if (lua_getmetatable(L, -1)) {
 			luaL_getmetatable(L, JSON_NULL_METATABLE);
 #if LUA_VERSION_NUM >= 502
@@ -524,10 +525,10 @@ encode(lua_State *L, luaL_Buffer *b)
 		lua_pushnil(L);
 		n = 0;
 		while (lua_next(L, t) != 0) {
-			int key, value;
+			int key /*, value */;
 
 			key = lua_absindex(L, -2);
-			value = lua_absindex(L, -1);
+			/* value = lua_absindex(L, -1); */
 
 			if (lua_type(L, -2) == LUA_TNUMBER) {
 				lua_pop(L, 1);
@@ -538,8 +539,8 @@ encode(lua_State *L, luaL_Buffer *b)
 			luaL_addstring(b, "\":");
 			encode(L, b);
 			lua_pushvalue(L, key);
-			lua_remove(L, value);
-			lua_remove(L, key);
+			/* lua_remove(L, value); */
+			/* lua_remove(L, key); */
 			n++;
 		}
 		if (n) {
@@ -549,13 +550,16 @@ encode(lua_State *L, luaL_Buffer *b)
 
 		if (e)
 			luaL_addstring(b, "[]");
+		lua_pop(L, 1);
 		break;
 	case LUA_TNIL:
 		luaL_addstring(b, "null");
+		lua_pop(L, 1);
 		break;
 	default:
 		json_error(L, "Lua type %s is incompatible with JSON",
 		    luaL_typename(L, -1));
+		lua_pop(L, 1);
 	}
 }
 
@@ -602,7 +606,7 @@ json_set_info(lua_State *L)
 	lua_pushliteral(L, "JSON encoder/decoder for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "json 1.2.8");
+	lua_pushliteral(L, "json 1.2.10");
 	lua_settable(L, -3);
 }
 
