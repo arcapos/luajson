@@ -167,6 +167,7 @@ decode_array(lua_State *L, char **s, int null)
 {
 	int i = 1;
 
+	luaL_checkstack(L, 2, "Out of stack space");
 	(*s)++;
 	lua_newtable(L);
 	for (i = 1; 1; i++) {
@@ -191,6 +192,8 @@ decode_array(lua_State *L, char **s, int null)
 static void
 decode_object(lua_State *L, char **s, int null)
 {
+	luaL_checkstack(L, 1, "Out of stack space");
+
 	(*s)++;
 	lua_newtable(L);
 	skip_ws(s);
@@ -228,6 +231,7 @@ decode_string(lua_State *L, char **s)
 	char *newstr = NULL, *newc, *beginning, *end, *nextEscape = NULL;
 	char utfbuf[4] = "";
 
+	luaL_checkstack(L, 1, "Out of stack space");
 	(*s)++;
 	beginning = *s;
 	for (end = NULL; **s != '\0' && end == NULL; (*s)++) {
@@ -322,6 +326,7 @@ decode_value(lua_State *L, char **s, int null)
 {
 	skip_ws(s);
 
+	luaL_checkstack(L, 1, "Out of stack space");
 	if (!strncmp(*s, "false", 5)) {
 		lua_pushboolean(L, 0);
 		*s += 5;
@@ -454,6 +459,7 @@ encode_string(lua_State *L, luaL_Buffer *b, unsigned char *s)
 				    ((*s & 0x0f) << 12) |
 				    ((*(s + 1) & 0x3f) << 6) |
 				    (*(s + 2) & 0x3f));
+				luaL_addstring(b, hexbuf);
 				s += 2;
 			} else if (((*s >> 3) & 0x1f) == 0x1e) {
 				/* deliberately ignored */
