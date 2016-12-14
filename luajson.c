@@ -146,11 +146,16 @@ code2utf8(lua_State *L, const unsigned char *code, char buf[4])
 		buf[0] = ((utf >> 6) & 0x1F) | 0xC0;
 		buf[1] = (utf & 0x3F) | 0x80;
 		buf[2] = buf[3] = 0;
-	} else {
+	} else if (utf < 65536) {
 		buf[0] = ((utf >> 12) & 0x0F) | 0xE0;
 		buf[1] = ((utf >> 6) & 0x3F) | 0x80;
 		buf[2] = (utf & 0x3F) | 0x80;
 		buf[3] = 0;
+	} else {
+		buf[0] = ((utf >> 18) & 0x07) | 0xF0;
+		buf[1] = ((utf >> 12) & 0x3F) | 0x80;
+		buf[2] = ((utf >> 6) & 0x3F) | 0x80;
+		buf[3] = (utf & 0x3F) | 0x80;
 	}
 	return buf;
 }
@@ -462,7 +467,13 @@ encode_string(lua_State *L, luaL_Buffer *b, unsigned char *s)
 				luaL_addstring(b, hexbuf);
 				s += 2;
 			} else if (((*s >> 3) & 0x1f) == 0x1e) {
-				/* deliberately ignored */
+				luaL_addstring(b, "\\u");
+				snprintf(hexbuf, sizeof hexbuf, "%04x",
+				    ((*s & 0x07) << 18) |
+				    ((*(s + 1) & 0x3f) << 12) |
+				    ((*(s + 2) & 0x3f) << 6) |
+				    (*(s + 3) & 0x3f));
+				luaL_addstring(b, hexbuf);
 				s += 3;
 			}
 			break;
