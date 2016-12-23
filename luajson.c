@@ -519,9 +519,9 @@ encode(lua_State *L, luaL_Buffer *b)
 		/* if there are t[1] .. t[n], output them as array */
 		n = 0;
 		e = 1;
+		t = lua_gettop(L);
 		for (m = 1; ; m++) {
-			lua_pushnumber(L, m);
-			lua_gettable(L, -2);
+			lua_geti(L, t, m);
 			if (lua_isnil(L, -1)) {
 				lua_pop(L, 1);
 				break;
