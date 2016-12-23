@@ -623,7 +623,7 @@ json_set_info(lua_State *L)
 	lua_pushliteral(L, "JSON encoder/decoder for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "json 1.2.10");
+	lua_pushliteral(L, "json 1.2.11");
 	lua_settable(L, -3);
 }
 

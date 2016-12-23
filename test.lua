@@ -1,6 +1,6 @@
 -- import the json module
 
-require('json')
+local json = require('json')
 
 local foo = json.decode([[
             {"name" : "lol", "age" : -1.5e+06, "foo" : ["bar", true, null]}
@@ -14,7 +14,7 @@ print(foo.name)   -- lol
 print(foo.foo[1]) -- bar
 print(foo.foo[2]) -- true
 print(foo.foo[3]) -- null
-print(foo.foo[3] == json.null) -- true
+print(json.isnull(foo.foo[3])) -- true
 foo.foox = "omg :D"
 foo.theNull = json.null
 foo.itIs = true
