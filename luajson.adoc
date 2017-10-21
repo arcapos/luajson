@@ -1,14 +1,13 @@
-Decoding and Encoding JSON-formatted data
------------------------------------------
+== Decoding and Encoding JSON-formatted data
 
 The json module is used to decode and encode data in JSON-format
 (Javascript Object Notation).
 
-Functions
-~~~~~~~~~
+=== Functions
 
+==== Decoding JSON data
+[source, lua]
 decode(data [, nullHandling])
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 Decode JSON-encoded data. The optional argument ’nullHandling’ specifies
 how JSON-null values are mapped to Lua values.
@@ -26,19 +25,19 @@ decode() returns the decoded values as Lua values or nil if an error
 occurs. If an error occured, a second return value contains the error
 message.
 
+==== Encoding Lua values into JSON format
+[source, lua]
 encode(data)
-^^^^^^^^^^^^
 
-Encode data in JSON-encoding.
+Encode data into JSON format.
 
-JSON-null values
-~~~~~~~~~~~~~~~~
+=== Handling of JSON-null values
 
 JSON has a special datatype to denote no value: the JSON-null value. To
 insert a JSON-null value, assign json.null. Use the following function
 to test for JSON-null values.
 
+[source, lua]
 isnull(var)
-^^^^^^^^^^^
 
 Returns true if var is JSON-null.
