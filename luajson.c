@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 - 2016, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2011 - 2020, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -43,7 +43,7 @@
 #include <ctype.h>
 #include <stdlib.h>
 
-#define JSON_NULL_METATABLE 	"JSON null object methods"
+#define JSON_NULL_METATABLE 	"JSON null object"
 #define JSON_GCMEM_METATABLE	"JSON garbage collected memory"
 
 static void decode_value(lua_State *, char **, int);
@@ -616,14 +616,14 @@ static void
 json_set_info(lua_State *L)
 {
 	lua_pushliteral(L, "_COPYRIGHT");
-	lua_pushliteral(L, "Copyright (C) 2011 - 2016 "
+	lua_pushliteral(L, "Copyright (C) 2011 - 2020 "
 	    "micro systems marc balmer");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_DESCRIPTION");
 	lua_pushliteral(L, "JSON encoder/decoder for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "json 1.2.11");
+	lua_pushliteral(L, "json 1.2.12");
 	lua_settable(L, -3);
 }
 
