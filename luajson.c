@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2011 - 2020, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
+ * Copyright (c) 2011 - 2021, Micro Systems Marc Balmer, CH-5073 Gipf-Oberfrick
  * All rights reserved.
  *
  * Redistribution and use in source and binary forms, with or without
@@ -134,7 +134,7 @@ fourhex2int(lua_State *L, const unsigned char *code)
 }
 
 static const char *
-code2utf8(lua_State *L, const unsigned char *code, char buf[4])
+code2utf8(lua_State *L, const unsigned char *code, char buf[5])
 {
 	unsigned int utf = 0;
 
@@ -157,6 +157,7 @@ code2utf8(lua_State *L, const unsigned char *code, char buf[4])
 		buf[2] = ((utf >> 6) & 0x3F) | 0x80;
 		buf[3] = (utf & 0x3F) | 0x80;
 	}
+	buf[4] = '\0';
 	return buf;
 }
 
@@ -234,7 +235,7 @@ decode_string(lua_State *L, char **s)
 {
 	size_t len;
 	char *newstr = NULL, *newc, *beginning, *end, *nextEscape = NULL;
-	char utfbuf[4] = "";
+	char utfbuf[5] = "";
 
 	luaL_checkstack(L, 1, "Out of stack space");
 	(*s)++;
@@ -417,7 +418,7 @@ json_decode(lua_State *L)
 static void
 encode_string(lua_State *L, luaL_Buffer *b, unsigned char *s)
 {
-	char hexbuf[6];
+	char hexbuf[8];
 
 	luaL_addchar(b, '"');
 	for (; *s; s++) {
@@ -500,15 +501,13 @@ encode(lua_State *L, luaL_Buffer *b)
 		lua_pop(L, 1);
 		break;
 	case LUA_TTABLE:
+		/* A value of 2 caused memory corruption, so we set it to 4 */
+		luaL_checkstack(L, 4, "out of stack space");
+
 		/* check if this is the null value */
-		luaL_checkstack(L, 2, "out of stack space");
 		if (lua_getmetatable(L, -1)) {
 			luaL_getmetatable(L, JSON_NULL_METATABLE);
-#if LUA_VERSION_NUM >= 502
 			if (lua_compare(L, -2, -1, LUA_OPEQ)) {
-#else
-			if (lua_equal(L, -2, -1)) {
-#endif
 				lua_pop(L, 2);
 				luaL_addstring(b, "null");
 				lua_pop(L, 1);
@@ -596,11 +595,7 @@ json_isnull(lua_State *L)
 {
 	if (lua_getmetatable(L, -1)) {
 		luaL_getmetatable(L, JSON_NULL_METATABLE);
-#if LUA_VERSION_NUM >= 502
 		if (lua_compare(L, -2, -1, LUA_OPEQ)) {
-#else
-		if (lua_equal(L, -2, -1)) {
-#endif
 			lua_pop(L, 2);
 			lua_pushboolean(L, 1);
 			goto done;
@@ -610,21 +605,6 @@ json_isnull(lua_State *L)
 	lua_pushboolean(L, 0);
 done:
 	return 1;
-}
-
-static void
-json_set_info(lua_State *L)
-{
-	lua_pushliteral(L, "_COPYRIGHT");
-	lua_pushliteral(L, "Copyright (C) 2011 - 2020 "
-	    "micro systems marc balmer");
-	lua_settable(L, -3);
-	lua_pushliteral(L, "_DESCRIPTION");
-	lua_pushliteral(L, "JSON encoder/decoder for Lua");
-	lua_settable(L, -3);
-	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "json 1.2.12");
-	lua_settable(L, -3);
 }
 
 static int
@@ -648,22 +628,23 @@ luaopen_json(lua_State* L)
 		{ "__call",	json_null },
 		{ NULL,		NULL }
 	};
-
-#if LUA_VERSION_NUM >= 502
 	luaL_newlib(L, methods);
-#else
-	luaL_register(L, "json", methods);
-#endif
-	json_set_info(L);
+	lua_pushliteral(L, "_COPYRIGHT");
+	lua_pushliteral(L, "Copyright (C) 2011 - 2021 "
+	    "micro systems marc balmer");
+	lua_settable(L, -3);
+	lua_pushliteral(L, "_DESCRIPTION");
+	lua_pushliteral(L, "JSON encoder/decoder for Lua");
+	lua_settable(L, -3);
+	lua_pushliteral(L, "_VERSION");
+	lua_pushliteral(L, "json 1.3.0");
+	lua_settable(L, -3);
 
 	lua_newtable(L);
+
 	/* The null metatable */
 	if (luaL_newmetatable(L, JSON_NULL_METATABLE)) {
-#if LUA_VERSION_NUM >= 502
 		luaL_setfuncs(L, null_methods, 0);
-#else
-		luaL_register(L, NULL, null_methods);
-#endif
 		lua_pushliteral(L, "__metatable");
 		lua_pushliteral(L, "must not access this metatable");
 		lua_settable(L, -3);
