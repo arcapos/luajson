@@ -1,4 +1,4 @@
-SRCS=		luajson.c
+SRCS=		luajson.c buffer.c
 MODULE=		json
 
 CFLAGS+=	-D_GNU_SOURCE

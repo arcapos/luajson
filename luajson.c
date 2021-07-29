@@ -43,12 +43,14 @@
 #include <ctype.h>
 #include <stdlib.h>
 
+#include "buffer.h"
+
 #define JSON_NULL_METATABLE 	"JSON null object"
 #define JSON_GCMEM_METATABLE	"JSON garbage collected memory"
 
 static void decode_value(lua_State *, char **, int);
 static void decode_string(lua_State *, char **);
-static void encode(lua_State *, luaL_Buffer *);
+static void encode(lua_State *, struct buffer *);
 
 static jmp_buf env;
 
@@ -134,7 +136,7 @@ fourhex2int(lua_State *L, const unsigned char *code)
 }
 
 static const char *
-code2utf8(lua_State *L, const unsigned char *code, char buf[5])
+code2utf8(lua_State *L, const unsigned char *code, char buf[4])
 {
 	unsigned int utf = 0;
 
@@ -157,7 +159,6 @@ code2utf8(lua_State *L, const unsigned char *code, char buf[5])
 		buf[2] = ((utf >> 6) & 0x3F) | 0x80;
 		buf[3] = (utf & 0x3F) | 0x80;
 	}
-	buf[4] = '\0';
 	return buf;
 }
 
@@ -235,7 +236,7 @@ decode_string(lua_State *L, char **s)
 {
 	size_t len;
 	char *newstr = NULL, *newc, *beginning, *end, *nextEscape = NULL;
-	char utfbuf[5] = "";
+	char utfbuf[4] = "";
 
 	luaL_checkstack(L, 1, "Out of stack space");
 	(*s)++;
@@ -416,33 +417,33 @@ json_decode(lua_State *L)
 
 /* encode_string assumes an UTF-8 string */
 static void
-encode_string(lua_State *L, luaL_Buffer *b, unsigned char *s)
+encode_string(lua_State *L, struct buffer *b, unsigned char *s)
 {
-	char hexbuf[8];
+	char hexbuf[6];
 
-	luaL_addchar(b, '"');
+	buf_addchar(b, '"');
 	for (; *s; s++) {
 		switch (*s) {
 		case '\\':
-			luaL_addstring(b, "\\\\");
+			buf_addstring(b, "\\\\");
 			break;
 		case '"':
-			luaL_addstring(b, "\\\"");
+			buf_addstring(b, "\\\"");
 			break;
 		case '\b':
-			luaL_addstring(b, "\\b");
+			buf_addstring(b, "\\b");
 			break;
 		case '\f':
-			luaL_addstring(b, "\\f");
+			buf_addstring(b, "\\f");
 			break;
 		case '\n':
-			luaL_addstring(b, "\\n");
+			buf_addstring(b, "\\n");
 			break;
 		case '\r':
-			luaL_addstring(b, "\\r");
+			buf_addstring(b, "\\r");
 			break;
 		case '\t':
-			luaL_addstring(b, "\\t");
+			buf_addstring(b, "\\t");
 			break;
 		default:
 		/* Convert UTF-8 to unicode
@@ -452,64 +453,63 @@ encode_string(lua_State *L, luaL_Buffer *b, unsigned char *s)
 		 * 00010000 - 001FFFFF: 11110xxx 10xxxxxx 10xxxxxx 10xxxxxx
 		 */
 			if ((*s & 0x80) == 0)
-				luaL_addchar(b, *s);
+				buf_addchar(b, *s);
 			else if (((*s >> 5) & 0x07) == 0x06) {
-				luaL_addstring(b, "\\u");
+				buf_addstring(b, "\\u");
 				snprintf(hexbuf, sizeof hexbuf, "%04x",
 				    ((*s & 0x1f) << 6) | (*(s + 1) & 0x3f));
-				luaL_addstring(b, hexbuf);
+				buf_addstring(b, hexbuf);
 				s++;
 			} else if (((*s >> 4) & 0x0f) == 0x0e) {
-				luaL_addstring(b, "\\u");
+				buf_addstring(b, "\\u");
 				snprintf(hexbuf, sizeof hexbuf, "%04x",
 				    ((*s & 0x0f) << 12) |
 				    ((*(s + 1) & 0x3f) << 6) |
 				    (*(s + 2) & 0x3f));
-				luaL_addstring(b, hexbuf);
+				buf_addstring(b, hexbuf);
 				s += 2;
 			} else if (((*s >> 3) & 0x1f) == 0x1e) {
-				luaL_addstring(b, "\\u");
+				buf_addstring(b, "\\u");
 				snprintf(hexbuf, sizeof hexbuf, "%04x",
 				    ((*s & 0x07) << 18) |
 				    ((*(s + 1) & 0x3f) << 12) |
 				    ((*(s + 2) & 0x3f) << 6) |
 				    (*(s + 3) & 0x3f));
-				luaL_addstring(b, hexbuf);
+				buf_addstring(b, hexbuf);
 				s += 3;
 			}
 			break;
 		}
 	}
-	luaL_addchar(b, '"');
+	buf_addchar(b, '"');
 }
 
 static void
-encode(lua_State *L, luaL_Buffer *b)
+encode(lua_State *L, struct buffer *b)
 {
 	int e, t, n, m;
 
 	switch (lua_type(L, -1)) {
 	case LUA_TBOOLEAN:
-		luaL_addstring(b, lua_toboolean(L, -1) ? "true" : "false");
+		buf_addstring(b, lua_toboolean(L, -1) ? "true" : "false");
 		lua_pop(L, 1);
 		break;
 	case LUA_TNUMBER:
-		luaL_addvalue(b);
+		buf_addstring(b, lua_tostring(L, -1));
+		lua_pop(L, 1);
 		break;
 	case LUA_TSTRING:
 		encode_string(L, b, (unsigned char *)lua_tostring(L, -1));
 		lua_pop(L, 1);
 		break;
 	case LUA_TTABLE:
-		/* A value of 2 caused memory corruption, so we set it to 4 */
-		luaL_checkstack(L, 4, "out of stack space");
-
 		/* check if this is the null value */
+		luaL_checkstack(L, 2, "out of stack space");
 		if (lua_getmetatable(L, -1)) {
 			luaL_getmetatable(L, JSON_NULL_METATABLE);
 			if (lua_compare(L, -2, -1, LUA_OPEQ)) {
 				lua_pop(L, 2);
-				luaL_addstring(b, "null");
+				buf_addstring(b, "null");
 				lua_pop(L, 1);
 				break;
 			}
@@ -525,12 +525,12 @@ encode(lua_State *L, luaL_Buffer *b)
 				lua_pop(L, 1);
 				break;
 			}
-			luaL_addchar(b, n ? ',' : '[');
+			buf_addchar(b, n ? ',' : '[');
 			encode(L, b);
 			n++;
 		}
 		if (n) {
-			luaL_addchar(b, ']');
+			buf_addchar(b, ']');
 			lua_pop(L, 1);
 			e = 0;
 			break;
@@ -550,9 +550,9 @@ encode(lua_State *L, luaL_Buffer *b)
 				lua_pop(L, 1);
 				continue;
 			}
-			luaL_addstring(b, n ? ",\"" : "{\"");
-			luaL_addstring(b, lua_tostring(L, -2));
-			luaL_addstring(b, "\":");
+			buf_addstring(b, n ? ",\"" : "{\"");
+			buf_addstring(b, lua_tostring(L, -2));
+			buf_addstring(b, "\":");
 			encode(L, b);
 			lua_pushvalue(L, key);
 			/* lua_remove(L, value); */
@@ -560,16 +560,16 @@ encode(lua_State *L, luaL_Buffer *b)
 			n++;
 		}
 		if (n) {
-			luaL_addchar(b, '}');
+			buf_addchar(b, '}');
 			e = 0;
 		}
 
 		if (e)
-			luaL_addstring(b, "[]");
+			buf_addstring(b, "[]");
 		lua_pop(L, 1);
 		break;
 	case LUA_TNIL:
-		luaL_addstring(b, "null");
+		buf_addstring(b, "null");
 		lua_pop(L, 1);
 		break;
 	default:
@@ -582,11 +582,12 @@ encode(lua_State *L, luaL_Buffer *b)
 static int
 json_encode(lua_State *L)
 {
-	luaL_Buffer b;
+	struct buffer b;
 
-	luaL_buffinit(L, &b);
+	buf_init(&b);
 	encode(L, &b);
-	luaL_pushresult(&b);
+	buf_push(&b, L);
+	buf_free(&b);
 	return 1;
 }
 
