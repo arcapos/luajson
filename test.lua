@@ -32,6 +32,14 @@ local a = {
 	test2 = 'world'
 }
 
+foo.nested = {
+	deeper = {
+		name = 'Miller',
+		location = 'Brooklyn'
+	},
+}
+
+-- foo.nested.anotherfoo = foo
 a.myself = a
 
 local str = json.encode(foo)
