@@ -609,17 +609,9 @@ done:
 }
 
 static int
-json_null_tostring(lua_State *L)
+json_null(lua_State *L)
 {
 	lua_pushstring(L, "null");
-	return 1;
-}
-
-static int
-json_null_call(lua_State *L)
-{
-	lua_newtable(L);
-	luaL_setmetatable(L, JSON_NULL_METATABLE);
 	return 1;
 }
 
@@ -633,8 +625,8 @@ luaopen_json(lua_State* L)
 		{ NULL,		NULL }
 	};
 	static const struct luaL_Reg null_methods[] = {
-		{ "__tostring",	json_null_tostring },
-		{ "__call",	json_null_call },
+		{ "__tostring",	json_null },
+		{ "__call",	json_null },
 		{ NULL,		NULL }
 	};
 	luaL_newlib(L, methods);
@@ -646,7 +638,7 @@ luaopen_json(lua_State* L)
 	lua_pushliteral(L, "JSON encoder/decoder for Lua");
 	lua_settable(L, -3);
 	lua_pushliteral(L, "_VERSION");
-	lua_pushliteral(L, "json 1.4.0");
+	lua_pushliteral(L, "json 1.3.0");
 	lua_settable(L, -3);
 
 	lua_newtable(L);
